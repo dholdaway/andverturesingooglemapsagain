@@ -116,15 +116,17 @@
         for (i = 0; i < locations.length; i++) {
             marker = new google.maps.Marker({
                 position: new google.maps.LatLng(locations[i][1], locations[i][2]),
-                map: map
+                map: map,
+                positionName: locations[i][0]
             });
 
-            google.maps.event.addListener(marker, 'click', (function(marker, i) {
-                return function() {
-                    infowindow.setContent(locations[i][0]);
-                    infowindow.open(map, marker);
-                }
-            })(marker, i));
+            google.maps.event.addListener(marker, 'click', function() {
+		infowindow.setContent(this.positionName);
+                infowindow.open(map, this);
+		sv.getPanorama({location: new google.maps.LatLng(this.position.lat(), this.position.lng()), radius: 50}, function(data, status) {
+		   processSVData(data, status, true);
+		});
+            });
         }
 
 
@@ -147,13 +149,15 @@
         });
       }
 
-      function processSVData(data, status) {
+      function processSVData(data, status, skipMarker) {
         if (status === google.maps.StreetViewStatus.OK) {
-          var marker = new google.maps.Marker({
-            position: data.location.latLng,
-            map: map,
-            title: data.location.description
-          });
+	  if (!skipMarker) {
+		  var marker = new google.maps.Marker({
+		    position: data.location.latLng,
+		    map: map,
+		    title: data.location.description
+		  });
+          }
 
           panorama.setPano(data.location.pano);
           panorama.setPov({
@@ -162,16 +166,18 @@
           });
           panorama.setVisible(true);
 
-          marker.addListener('click', function() {
-            var markerPanoID = data.location.pano;
-            // Set the Pano to use the passed panoID.
-            panorama.setPano(markerPanoID);
-            panorama.setPov({
-              heading: 270,
-              pitch: 0
-            });
-            panorama.setVisible(true);
-          });
+	  if (!skipMarker) {
+		  marker.addListener('click', function() {
+		    var markerPanoID = data.location.pano;
+		    // Set the Pano to use the passed panoID.
+		    panorama.setPano(markerPanoID);
+		    panorama.setPov({
+		      heading: 270,
+		      pitch: 0
+		    });
+		    panorama.setVisible(true);
+		  });
+          }
         } else {
           console.error('Street View data not found for this location.');
         }
